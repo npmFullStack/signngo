@@ -9,14 +9,14 @@
   }
 
   /* Ensure NativeWind classes use the correct fonts */
-  .font-poppins {
+  .font-popping {
     font-family: 'Poppins-Regular', sans-serif;
   }
-  
+
   .font-poppins-bold {
     font-family: 'Poppins-Bold', sans-serif;
   }
-  
+
   .font-prostoOne {
     font-family: 'ProstoOne-Regular', cursive;
   }
@@ -32,5 +32,14 @@
 
   .font-semibold {
     font-family: 'Poppins-Bold', sans-serif;
+  }
+
+  /* Background pattern utility class */
+  .bg-grid-pattern {
+    background-image: 
+      linear-gradient(to right, #4f4f4f2e 1px, transparent 1px),
+      linear-gradient(to bottom, #4f4f4f2e 1px, transparent 1px);
+    background-size: 14px 24px;
+    mask-image: radial-gradient(ellipse 80% 50% at 50% 0%, #000 70%, transparent 110%);
   }
 }

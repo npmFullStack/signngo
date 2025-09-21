@@ -1,9 +1,8 @@
 import { Stack } from 'expo-router';
-import './global.css';
+import '../styles/global.css';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { View } from 'react-native';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -16,36 +15,37 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
-      // Hide splash screen after a short delay to ensure loading screen is visible
       setTimeout(() => {
         SplashScreen.hideAsync();
       }, 100);
     }
   }, [fontsLoaded, fontError]);
 
-  // Return null while fonts are loading - Expo Router will show loading.tsx
   if (!fontsLoaded && !fontError) {
     return null;
   }
 
   return (
-    <Stack>
-      <Stack.Screen
-        name="loading"
+    <Stack
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Stack.Screen name="loading" />
+      <Stack.Screen name="index" />
+      <Stack.Screen name="signature" />
+      <Stack.Screen 
+        name="track-order" 
         options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="index"
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="signature"
-        options={{
-          headerShown: false,
+          headerShown: true,
+          headerTitle: 'Track Order',
+          headerTitleStyle: {
+            fontFamily: 'Poppins-Bold',
+            color: '#2563EB',
+            textAlign: 'center',
+            fontSize: 18,
+          },
+          headerBackTitle: 'Back',
         }}
       />
     </Stack>

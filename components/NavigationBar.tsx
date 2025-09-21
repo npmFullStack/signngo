@@ -1,58 +1,54 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Link } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 interface NavigationBarProps {
-  activeTab: 'home' | 'signature' | 'gallery' | 'settings';
+  activeTab: 'notifications' | 'home' | 'account';
 }
 
 export default function NavigationBar({ activeTab }: NavigationBarProps) {
   const navItems = [
     {
+      id: 'notifications',
+      label: 'Notifications',
+      icon: 'bell-outline',
+      activeIcon: 'bell',
+      route: '/notifications',
+    },
+    {
       id: 'home',
       label: 'Home',
-      icon: 'home',
+      icon: 'home-outline',
+      activeIcon: 'home',
       route: '/',
     },
     {
-      id: 'signature',
-      label: 'Create',
-      icon: 'edit-3',
-      route: '/signature',
-    },
-    {
-      id: 'gallery',
-      label: 'Gallery',
-      icon: 'image',
-      route: '/gallery',
-    },
-    {
-      id: 'settings',
-      label: 'Settings',
-      icon: 'settings',
-      route: '/settings',
+      id: 'account',
+      label: 'Account',
+      icon: 'account-outline',
+      activeIcon: 'account',
+      route: '/account',
     },
   ];
 
   const NavItem = ({ item }: { item: typeof navItems[0] }) => {
     const isActive = activeTab === item.id;
     
-    if (item.id === 'gallery' || item.id === 'settings') {
-      // For non-implemented routes, use TouchableOpacity with alert
+    if (item.id === 'notifications' || item.id === 'account') {
       return (
         <TouchableOpacity
-          className="flex-1 items-center justify-center py-2"
+          className="flex-1 items-center justify-center py-3"
           onPress={() => alert(`${item.label} feature coming soon!`)}
         >
-          <Feather
-            name={item.icon as any}
+          <Icon
+            name={isActive ? item.activeIcon : item.icon}
             size={24}
-            color={isActive ? '#3B82F6' : '#9CA3AF'}
+            color={isActive ? '#2563EB' : '#6B7280'}
           />
           <Text
-            className={`text-xs mt-1 font-poppins ${
-              isActive ? 'text-blue-500' : 'text-gray-400'
+            className={`text-[10px] mt-1 font-medium ${
+              isActive ? 'text-blue-600' : 'text-gray-500'
             }`}
           >
             {item.label}
@@ -63,17 +59,15 @@ export default function NavigationBar({ activeTab }: NavigationBarProps) {
 
     return (
       <Link href={item.route} asChild>
-        <TouchableOpacity className="flex-1 items-center justify-center py-2">
-          <Feather
-            name={item.icon as any}
-            size={24}
-            color={isActive ? '#3B82F6' : '#9CA3AF'}
-          />
-          <Text
-            className={`text-xs mt-1 font-poppins ${
-              isActive ? 'text-blue-500' : 'text-gray-400'
-            }`}
-          >
+        <TouchableOpacity className="flex-1 items-center justify-center">
+          <View className="items-center justify-center w-12 h-12 bg-blue-600 rounded-full">
+            <Icon
+              name={isActive ? item.activeIcon : item.icon}
+              size={24}
+              color="#FFFFFF"
+            />
+          </View>
+          <Text className="text-[10px] mt-1 font-medium text-blue-600">
             {item.label}
           </Text>
         </TouchableOpacity>
@@ -82,7 +76,7 @@ export default function NavigationBar({ activeTab }: NavigationBarProps) {
   };
 
   return (
-    <View className="bg-white border-t border-gray-200 flex-row">
+    <View className="bg-white border-t border-gray-200 flex-row justify-around items-center h-16">
       {navItems.map((item) => (
         <NavItem key={item.id} item={item} />
       ))}

@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Apply Poppins to all text elements */
+  * {
+    font-family: "Poppins-Regular", sans-serif;
+  }
+
+  /* Ensure NativeWind classes use the correct fonts */
+  .font-poppins {
+    font-family: "Poppins-Regular", sans-serif;
+  }
+
+  .font-poppins-bold {
+    font-family: "Poppins-Bold", sans-serif;
+  }
+
+  .font-prostoOne {
+    font-family: "ProstoOne-Regular", cursive;
+  }
+
+  /* Make sure Tailwind font classes work */
+  .font-sans {
+    font-family: "Poppins-Regular", sans-serif;
+  }
+
+  .font-bold {
+    font-family: "Poppins-Bold", sans-serif;
+  }
+
+  .font-semibold {
+    font-family: "Poppins-Bold", sans-serif;
+  }
+}
