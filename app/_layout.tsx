@@ -31,18 +31,19 @@ export default function RootLayout() {
         headerShown: false,
       }}
     >
-      <Stack.Screen name="loading" />
-      <Stack.Screen name="index" />
-      <Stack.Screen name="signature" />
-      <Stack.Screen 
-        name="track-order" 
+      <Stack.Screen name="loading" options={{ headerShown: false }} />
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="signature" options={{ headerShown: false }} />
+      <Stack.Screen name="report-incident" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="track-order"
         options={{
           headerShown: true,
           headerTitle: 'Track Order',
+          headerTitleAlign: 'center',
           headerTitleStyle: {
             fontFamily: 'Poppins-Bold',
             color: '#2563EB',
-            textAlign: 'center',
             fontSize: 18,
           },
           headerBackTitle: 'Back',
