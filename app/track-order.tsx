@@ -1,11 +1,12 @@
 // app/track-order.tsx
 import { View, Text, TextInput, TouchableOpacity, Image, Alert } from 'react-native';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import GridBackground from '../components/GridBackground';
 import NavigationBar from '../components/NavigationBar';
 import MapComponent from '../components/MapView';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import * as Location from 'expo-location';
 import axios from 'axios';
 
 interface BookingData {
@@ -21,14 +22,10 @@ interface BookingData {
   pickup_city: string | null;
   pickup_barangay: string | null;
   pickup_street: string | null;
-  pickup_lat: number | null;
-  pickup_lng: number | null;
   delivery_province: string | null;
   delivery_city: string | null;
   delivery_barangay: string | null;
   delivery_street: string | null;
-  delivery_lat: number | null;
-  delivery_lng: number | null;
   preferred_departure?: string | null;
   created_at: string;
 }
@@ -39,8 +36,70 @@ export default function TrackOrderScreen() {
   const [hasResults, setHasResults] = useState(false);
   const [bookingData, setBookingData] = useState<BookingData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   
   const API_BASE_URL = 'http://localhost:5000';
+
+  useEffect(() => {
+    getCurrentLocation();
+  }, []);
+
+  const getCurrentLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const location = await Location.getCurrentPositionAsync({});
+        setUserLocation({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+      }
+    } catch (error) {
+      console.log('Location permission error:', error);
+    }
+  };
+
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c;
+    return Math.round(distance * 10) / 10; // Round to 1 decimal place
+  };
+
+  const getLocationCoordinates = (booking: BookingData, locationType: 'pickup' | 'delivery' | 'origin_port' | 'destination_port') => {
+    // Default coordinates for major Philippine ports
+    const portCoordinates = {
+      'manila': { lat: 14.5995, lng: 120.9842 },
+      'cebu': { lat: 10.3157, lng: 123.8854 },
+      'davao': { lat: 7.1907, lng: 125.4553 },
+      'iloilo': { lat: 10.7202, lng: 122.5621 },
+      'cagayan de oro': { lat: 8.4542, lng: 124.6319 },
+      'zamboanga': { lat: 6.9214, lng: 122.0790 }
+    };
+
+    switch (locationType) {
+      case 'pickup':
+        // For demo purposes, use Manila coordinates for pickup
+        return { lat: 14.5995, lng: 120.9842 };
+      case 'delivery':
+        // For demo purposes, use Cebu coordinates for delivery
+        return { lat: 10.3157, lng: 123.8854 };
+      case 'origin_port':
+        const originPort = booking.origin_port?.toLowerCase();
+        return portCoordinates[originPort as keyof typeof portCoordinates] || portCoordinates.manila;
+      case 'destination_port':
+        const destPort = booking.destination_port?.toLowerCase();
+        return portCoordinates[destPort as keyof typeof portCoordinates] || portCoordinates.cebu;
+      default:
+        return { lat: 14.5995, lng: 120.9842 };
+    }
+  };
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -55,7 +114,7 @@ export default function TrackOrderScreen() {
       const response = await axios.get(
         `${API_BASE_URL}/couriers/public/search/${searchQuery.trim()}`,
         {
-          timeout: 10000, // 10 second timeout
+          timeout: 10000,
           headers: {
             'Content-Type': 'application/json'
           }
@@ -98,21 +157,21 @@ export default function TrackOrderScreen() {
   const getStatusStyle = (status: string) => {
     switch (status) {
       case 'PICKUP_SCHEDULED':
-        return 'bg-yellow-100 text-yellow-700';
+        return 'bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800';
       case 'LOADED_TO_TRUCK':
-        return 'bg-blue-100 text-blue-700';
+        return 'bg-gradient-to-r from-orange-100 to-orange-200 text-orange-800';
       case 'ARRIVED_ORIGIN_PORT':
-        return 'bg-purple-100 text-purple-700';
+        return 'bg-gradient-to-r from-indigo-100 to-indigo-200 text-indigo-800';
       case 'LOADED_TO_SHIP':
-        return 'bg-indigo-100 text-indigo-700';
+        return 'bg-gradient-to-r from-sky-100 to-sky-200 text-sky-800';
       case 'IN_TRANSIT':
-        return 'bg-orange-100 text-orange-700';
+        return 'bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800';
       case 'ARRIVED_DESTINATION_PORT':
-        return 'bg-teal-100 text-teal-700';
+        return 'bg-gradient-to-r from-pink-100 to-pink-200 text-pink-800';
       case 'OUT_FOR_DELIVERY':
-        return 'bg-cyan-100 text-cyan-700';
+        return 'bg-gradient-to-r from-teal-100 to-teal-200 text-teal-800';
       case 'DELIVERED':
-        return 'bg-green-100 text-green-700';
+        return 'bg-gradient-to-r from-green-100 to-green-200 text-green-800';
       default:
         return 'bg-gray-100 text-gray-700';
     }
@@ -123,6 +182,11 @@ export default function TrackOrderScreen() {
     
     switch (status) {
       case 'PICKUP_SCHEDULED':
+        const pickupCoords = getLocationCoordinates(booking, 'pickup');
+        const pickupDistance = userLocation 
+          ? calculateDistance(userLocation.latitude, userLocation.longitude, pickupCoords.lat, pickupCoords.lng)
+          : null;
+        
         return {
           label: 'Pickup Location',
           location: [
@@ -132,26 +196,44 @@ export default function TrackOrderScreen() {
             booking.pickup_province,
           ]
             .filter(Boolean)
-            .join(", ") || "N/A"
+            .join(", ") || "N/A",
+          distance: pickupDistance ? `${pickupDistance} km away` : null
         };
         
       case 'LOADED_TO_TRUCK':
+        const originCoords = getLocationCoordinates(booking, 'origin_port');
+        const originDistance = userLocation 
+          ? calculateDistance(userLocation.latitude, userLocation.longitude, originCoords.lat, originCoords.lng)
+          : null;
+        
         return {
           label: 'Origin Port',
           location: booking.origin_port 
             ? `${booking.origin_port.charAt(0).toUpperCase()}${booking.origin_port.slice(1).toLowerCase()} Port`
-            : "N/A"
+            : "N/A",
+          distance: originDistance ? `${originDistance} km away` : null
         };
         
       case 'ARRIVED_DESTINATION_PORT':
+        const destCoords = getLocationCoordinates(booking, 'destination_port');
+        const destDistance = userLocation 
+          ? calculateDistance(userLocation.latitude, userLocation.longitude, destCoords.lat, destCoords.lng)
+          : null;
+        
         return {
           label: 'Destination Port',
           location: booking.destination_port
             ? `${booking.destination_port.charAt(0).toUpperCase()}${booking.destination_port.slice(1).toLowerCase()} Port`
-            : "N/A"
+            : "N/A",
+          distance: destDistance ? `${destDistance} km away` : null
         };
         
       case 'OUT_FOR_DELIVERY':
+        const deliveryCoords = getLocationCoordinates(booking, 'delivery');
+        const deliveryDistance = userLocation 
+          ? calculateDistance(userLocation.latitude, userLocation.longitude, deliveryCoords.lat, deliveryCoords.lng)
+          : null;
+        
         return {
           label: 'Delivery Location',
           location: [
@@ -161,7 +243,8 @@ export default function TrackOrderScreen() {
             booking.delivery_province,
           ]
             .filter(Boolean)
-            .join(", ") || "N/A"
+            .join(", ") || "N/A",
+          distance: deliveryDistance ? `${deliveryDistance} km away` : null
         };
         
       default:
@@ -174,7 +257,8 @@ export default function TrackOrderScreen() {
             booking.pickup_province,
           ]
             .filter(Boolean)
-            .join(", ") || "N/A"
+            .join(", ") || "N/A",
+          distance: null
         };
     }
   };
@@ -184,28 +268,55 @@ export default function TrackOrderScreen() {
     
     switch (status) {
       case 'PICKUP_SCHEDULED':
-        return booking.origin_port
-          ? `${booking.origin_port.charAt(0).toUpperCase()}${booking.origin_port.slice(1).toLowerCase()} Port`
-          : "N/A";
+        const originCoords = getLocationCoordinates(booking, 'origin_port');
+        const originDistance = userLocation 
+          ? calculateDistance(userLocation.latitude, userLocation.longitude, originCoords.lat, originCoords.lng)
+          : null;
+        
+        return {
+          location: booking.origin_port
+            ? `${booking.origin_port.charAt(0).toUpperCase()}${booking.origin_port.slice(1).toLowerCase()} Port`
+            : "N/A",
+          distance: originDistance ? `${originDistance} km away` : null
+        };
+        
       case 'LOADED_TO_TRUCK':
       case 'ARRIVED_ORIGIN_PORT':
-        return booking.destination_port
-          ? `${booking.destination_port.charAt(0).toUpperCase()}${booking.destination_port.slice(1).toLowerCase()} Port`
-          : "N/A";
+        const destCoords = getLocationCoordinates(booking, 'destination_port');
+        const destDistance = userLocation 
+          ? calculateDistance(userLocation.latitude, userLocation.longitude, destCoords.lat, destCoords.lng)
+          : null;
+        
+        return {
+          location: booking.destination_port
+            ? `${booking.destination_port.charAt(0).toUpperCase()}${booking.destination_port.slice(1).toLowerCase()} Port`
+            : "N/A",
+          distance: destDistance ? `${destDistance} km away` : null
+        };
+        
       case 'ARRIVED_DESTINATION_PORT':
       case 'OUT_FOR_DELIVERY':
-        return [
-          booking.delivery_street,
-          booking.delivery_barangay,
-          booking.delivery_city,
-          booking.delivery_province,
-        ]
-          .filter(Boolean)
-          .join(", ") || "N/A";
+        const deliveryCoords = getLocationCoordinates(booking, 'delivery');
+        const deliveryDistance = userLocation 
+          ? calculateDistance(userLocation.latitude, userLocation.longitude, deliveryCoords.lat, deliveryCoords.lng)
+          : null;
+        
+        return {
+          location: [
+            booking.delivery_street,
+            booking.delivery_barangay,
+            booking.delivery_city,
+            booking.delivery_province,
+          ]
+            .filter(Boolean)
+            .join(", ") || "N/A",
+          distance: deliveryDistance ? `${deliveryDistance} km away` : null
+        };
+        
       case 'DELIVERED':
-        return "Delivered";
+        return { location: "Delivered", distance: null };
       default:
-        return "N/A";
+        return { location: "N/A", distance: null };
     }
   };
 
@@ -242,7 +353,7 @@ export default function TrackOrderScreen() {
                       {bookingData.booking_number}
                     </Text>
                     <Text
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-poppins-bold ${getStatusStyle(
+                      className={`px-3 py-1 rounded-full text-[10px] font-poppins-bold ${getStatusStyle(
                         bookingData.status
                       )}`}
                     >
@@ -262,7 +373,7 @@ export default function TrackOrderScreen() {
 
                   {/* Current & Next Destinations */}
                   <View className="mb-2">
-                    <View className="flex-row items-start mb-1">
+                    <View className="flex-row items-start mb-2">
                       <Icon name="map-marker" size={14} color="#2563EB" />
                       <View className="ml-1 flex-1">
                         <Text className="font-poppins-bold text-[11px] text-gray-700">
@@ -271,19 +382,29 @@ export default function TrackOrderScreen() {
                         <Text className="font-poppins text-[11px] text-gray-600">
                           {getCurrentLocationDisplay(bookingData).location}
                         </Text>
+                        {getCurrentLocationDisplay(bookingData).distance && (
+                          <Text className="font-poppins text-[10px] text-blue-600 mt-0.5">
+                            📍 {getCurrentLocationDisplay(bookingData).distance}
+                          </Text>
+                        )}
                       </View>
                     </View>
                     
                     {bookingData.status !== 'DELIVERED' && (
                       <View className="flex-row items-start">
-                        <Icon name="ferry" size={14} color="#10B981" />
+                        <Icon name="target" size={14} color="#10B981" />
                         <View className="ml-1 flex-1">
                           <Text className="font-poppins-bold text-[11px] text-gray-700">
                             Next Destination
                           </Text>
                           <Text className="font-poppins text-[11px] text-gray-600">
-                            {getNextDestination(bookingData)}
+                            {getNextDestination(bookingData).location}
                           </Text>
+                          {getNextDestination(bookingData).distance && (
+                            <Text className="font-poppins text-[10px] text-green-600 mt-0.5">
+                              🎯 {getNextDestination(bookingData).distance}
+                            </Text>
+                          )}
                         </View>
                       </View>
                     )}
