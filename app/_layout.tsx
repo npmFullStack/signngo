@@ -26,29 +26,43 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <Stack.Screen name="loading" options={{ headerShown: false }} />
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="signature" options={{ headerShown: false }} />
-      <Stack.Screen name="report-incident" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="track-order"
-        options={{
-          headerShown: true,
-          headerTitle: 'Track Order',
-          headerTitleAlign: 'center',
-          headerTitleStyle: {
-            fontFamily: 'Poppins-Bold',
-            color: '#2563EB',
-            fontSize: 18,
-          },
-          headerBackTitle: 'Back',
-        }}
-      />
-    </Stack>
+<Stack
+  screenOptions={{
+    headerShown: false,
+  }}
+>
+  <Stack.Screen name="loading" options={{ headerShown: false }} />
+  <Stack.Screen name="index" options={{ headerShown: false }} />
+  <Stack.Screen
+    name="signature"
+    options={{
+      headerShown: true,
+      headerTitle: 'Signature',
+      headerTitleAlign: 'center',
+      headerTitleStyle: {
+        fontFamily: 'Poppins-Bold',
+        color: '#2563EB',
+        fontSize: 18,
+      },
+      headerBackTitle: 'Back',
+    }}
+  />
+  <Stack.Screen name="report-incident" options={{ headerShown: false }} />
+  <Stack.Screen
+    name="track-order"
+    options={{
+      headerShown: true,
+      headerTitle: 'Track Order',
+      headerTitleAlign: 'center',
+      headerTitleStyle: {
+        fontFamily: 'Poppins-Bold',
+        color: '#2563EB',
+        fontSize: 18,
+      },
+      headerBackTitle: 'Back',
+    }}
+  />
+</Stack>
+
   );
 }
