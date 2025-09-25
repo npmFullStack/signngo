@@ -9,6 +9,7 @@ import MapComponent from '../components/MapView';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import * as Location from 'expo-location';
 import { useBookingStore } from '../store/bookingStore';
+import { getPortByValue } from '../utils/shipRoutes';
 
 interface BookingData {
   id: string;
@@ -30,11 +31,47 @@ interface BookingData {
   created_at: string;
 }
 
+const statusMap = {
+  PICKUP_SCHEDULED: {
+    label: "Pickup",
+    color: "bg-yellow-500 text-white"
+  },
+  LOADED_TO_TRUCK: {
+    label: "Loaded Truck",
+    color: "bg-orange-500 text-white"
+  },
+  ARRIVED_ORIGIN_PORT: {
+    label: "Origin Port",
+    color: "bg-indigo-500 text-white"
+  },
+  LOADED_TO_SHIP: {
+    label: "Loaded Ship",
+    color: "bg-sky-500 text-white"
+  },
+  IN_TRANSIT: {
+    label: "Transit",
+    color: "bg-purple-500 text-white"
+  },
+  ARRIVED_DESTINATION_PORT: {
+    label: "Dest. Port",
+    color: "bg-pink-500 text-white"
+  },
+  OUT_FOR_DELIVERY: {
+    label: "Delivery",
+    color: "bg-teal-500 text-white"
+  },
+  DELIVERED: {
+    label: "Delivered",
+    color: "bg-green-500 text-white"
+  }
+};
+
 export default function TrackOrderScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [searchAttempted, setSearchAttempted] = useState(false);
   const { currentBooking, searchBooking, loading } = useBookingStore();
-const router = useRouter();
+  const router = useRouter();
 
   useEffect(() => {
     getCurrentLocation();
@@ -68,42 +105,66 @@ const router = useRouter();
     return Math.round(distance * 10) / 10;
   };
 
-  const getLocationCoordinates = (booking: BookingData, locationType: 'pickup' | 'delivery' | 'origin_port' | 'destination_port') => {
-    const portCoordinates = {
-      manila: { lat: 14.5995, lng: 120.9842 },
-      cebu: { lat: 10.3157, lng: 123.8854 },
-      davao: { lat: 7.1907, lng: 125.4553 },
-      iloilo: { lat: 10.7202, lng: 122.5621 },
-      'cagayan de oro': { lat: 8.4542, lng: 124.6319 },
-      zamboanga: { lat: 6.9214, lng: 122.0790 },
-    };
-
+  const getLocationCoordinates = async (booking: BookingData, locationType: 'pickup' | 'delivery' | 'origin_port' | 'destination_port') => {
     switch (locationType) {
       case 'pickup':
+        // For pickup, try to geocode the actual address
+        const pickupAddress = [booking.pickup_street, booking.pickup_barangay, booking.pickup_city, booking.pickup_province]
+          .filter(Boolean)
+          .join(', ');
+        if (pickupAddress && pickupAddress !== '') {
+          try {
+            const geocoded = await Location.geocodeAsync(pickupAddress);
+            if (geocoded.length > 0) {
+              return { lat: geocoded[0].latitude, lng: geocoded[0].longitude };
+            }
+          } catch (error) {
+            console.log('Geocoding error for pickup:', error);
+          }
+        }
+        // Fallback to Manila if geocoding fails
         return { lat: 14.5995, lng: 120.9842 };
+
       case 'delivery':
+        // For delivery, try to geocode the actual address
+        const deliveryAddress = [booking.delivery_street, booking.delivery_barangay, booking.delivery_city, booking.delivery_province]
+          .filter(Boolean)
+          .join(', ');
+        if (deliveryAddress && deliveryAddress !== '') {
+          try {
+            const geocoded = await Location.geocodeAsync(deliveryAddress);
+            if (geocoded.length > 0) {
+              return { lat: geocoded[0].latitude, lng: geocoded[0].longitude };
+            }
+          } catch (error) {
+            console.log('Geocoding error for delivery:', error);
+          }
+        }
+        // Fallback to Cebu if geocoding fails
         return { lat: 10.3157, lng: 123.8854 };
+
       case 'origin_port':
-        const originPort = booking.origin_port?.toLowerCase();
-        return portCoordinates[originPort as keyof typeof portCoordinates] || portCoordinates.manila;
+        const originPort = getPortByValue(booking.origin_port?.toLowerCase());
+        return originPort ? { lat: originPort.lat, lng: originPort.lng } : { lat: 14.5995, lng: 120.9842 };
+
       case 'destination_port':
-        const destPort = booking.destination_port?.toLowerCase();
-        return portCoordinates[destPort as keyof typeof portCoordinates] || portCoordinates.cebu;
+        const destPort = getPortByValue(booking.destination_port?.toLowerCase());
+        return destPort ? { lat: destPort.lat, lng: destPort.lng } : { lat: 10.3157, lng: 123.8854 };
+
       default:
         return { lat: 14.5995, lng: 120.9842 };
     }
   };
 
-  const getCurrentLocationDisplay = (booking: BookingData) => {
+  const getCurrentLocationDisplay = async (booking: BookingData) => {
     const { status } = booking;
-
+    
     switch (status) {
       case 'PICKUP_SCHEDULED':
-        const pickupCoords = getLocationCoordinates(booking, 'pickup');
+        const pickupCoords = await getLocationCoordinates(booking, 'pickup');
         const pickupDistance = userLocation
           ? calculateDistance(userLocation.latitude, userLocation.longitude, pickupCoords.lat, pickupCoords.lng)
           : null;
-
         return {
           label: 'Pickup Location',
           location: [booking.pickup_street, booking.pickup_barangay, booking.pickup_city, booking.pickup_province]
@@ -114,35 +175,34 @@ const router = useRouter();
 
       case 'LOADED_TO_TRUCK':
       case 'ARRIVED_ORIGIN_PORT':
-        const originCoords = getLocationCoordinates(booking, 'origin_port');
+        const originCoords = await getLocationCoordinates(booking, 'origin_port');
         const originDistance = userLocation
           ? calculateDistance(userLocation.latitude, userLocation.longitude, originCoords.lat, originCoords.lng)
           : null;
-
         return {
           label: 'Origin Port',
-          location: booking.origin_port ? `${booking.origin_port.charAt(0).toUpperCase()}${booking.origin_port.slice(1).toLowerCase()} Port` : 'N/A',
+          location: booking.origin_port ?
+            `${booking.origin_port.charAt(0).toUpperCase()}${booking.origin_port.slice(1).toLowerCase()} Port` : 'N/A',
           distance: originDistance ? `${originDistance} km away` : null,
         };
 
       case 'ARRIVED_DESTINATION_PORT':
-        const destCoords = getLocationCoordinates(booking, 'destination_port');
+        const destCoords = await getLocationCoordinates(booking, 'destination_port');
         const destDistance = userLocation
           ? calculateDistance(userLocation.latitude, userLocation.longitude, destCoords.lat, destCoords.lng)
           : null;
-
         return {
           label: 'Destination Port',
-          location: booking.destination_port ? `${booking.destination_port.charAt(0).toUpperCase()}${booking.destination_port.slice(1).toLowerCase()} Port` : 'N/A',
+          location: booking.destination_port ?
+            `${booking.destination_port.charAt(0).toUpperCase()}${booking.destination_port.slice(1).toLowerCase()} Port` : 'N/A',
           distance: destDistance ? `${destDistance} km away` : null,
         };
 
       case 'OUT_FOR_DELIVERY':
-        const deliveryCoords = getLocationCoordinates(booking, 'delivery');
+        const deliveryCoords = await getLocationCoordinates(booking, 'delivery');
         const deliveryDistance = userLocation
           ? calculateDistance(userLocation.latitude, userLocation.longitude, deliveryCoords.lat, deliveryCoords.lng)
           : null;
-
         return {
           label: 'Delivery Location',
           location: [booking.delivery_street, booking.delivery_barangay, booking.delivery_city, booking.delivery_province]
@@ -159,13 +219,31 @@ const router = useRouter();
     }
   };
 
+  const [currentLocationDisplay, setCurrentLocationDisplay] = useState({ label: '', location: '', distance: null });
+
+  useEffect(() => {
+    if (currentBooking) {
+      getCurrentLocationDisplay(currentBooking).then(setCurrentLocationDisplay);
+    }
+  }, [currentBooking, userLocation]);
+
   const handleSearch = () => {
     if (!searchQuery.trim()) {
       Alert.alert('Error', 'Please enter a booking or HWB number');
       return;
     }
+    setSearchAttempted(true);
     searchBooking(searchQuery.trim());
   };
+
+  const getStatusStyle = (status: string) => {
+    return statusMap[status as keyof typeof statusMap] || { label: status.replace(/_/g, ' '), color: 'bg-gray-500 text-white' };
+  };
+
+const imageSource = searchAttempted && !loading 
+  ? require('../assets/image/no-data.png')
+  : require('../assets/image/trackorder.png');
+
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -197,11 +275,10 @@ const router = useRouter();
                   <Text className="font-poppins-bold text-sm text-gray-800">
                     {currentBooking.booking_number}
                   </Text>
-                  <Text className="px-3 py-1 rounded-full text-[10px] font-poppins-bold bg-gray-100 text-gray-700">
-                    {currentBooking.status.replace(/_/g, ' ')}
+                  <Text className={`px-3 py-1 rounded-full text-[10px] font-poppins-bold ${getStatusStyle(currentBooking.status).color}`}>
+                    {getStatusStyle(currentBooking.status).label}
                   </Text>
                 </View>
-
                 <Text className="font-poppins text-[11px] text-gray-500">
                   HWB: {currentBooking.hwb_number}
                 </Text>
@@ -217,15 +294,18 @@ const router = useRouter();
                     <Icon name="map-marker" size={14} color="#2563EB" />
                     <View className="ml-1 flex-1">
                       <Text className="font-poppins-bold text-[11px] text-gray-700">
-                        {getCurrentLocationDisplay(currentBooking).label}
+                        {currentLocationDisplay.label}
                       </Text>
                       <Text className="font-poppins text-[11px] text-gray-600">
-                        {getCurrentLocationDisplay(currentBooking).location}
+                        {currentLocationDisplay.location}
                       </Text>
-                      {getCurrentLocationDisplay(currentBooking).distance && (
-                        <Text className="font-poppins text-[10px] text-blue-600 mt-0.5">
-                          📍 {getCurrentLocationDisplay(currentBooking).distance}
-                        </Text>
+                      {currentLocationDisplay.distance && (
+                        <View className="flex-row items-center mt-0.5">
+                          <Icon name="map-marker-distance" size={10} color="#2563EB" />
+                          <Text className="font-poppins text-[10px] text-blue-600 ml-1">
+                            {currentLocationDisplay.distance}
+                          </Text>
+                        </View>
                       )}
                     </View>
                   </View>
@@ -248,23 +328,24 @@ const router = useRouter();
                 </View>
 
                 {/* Action Buttons */}
-<View className="flex-row justify-end mt-2 space-x-2">
-      <TouchableOpacity
-        className="flex-row items-center border border-blue-500 px-2 py-0.5 rounded-full"
-        onPress={() => router.push("/signature")}  // ⬅️ navigate instead of alert
-      >
-        <Icon name="draw-pen" size={12} color="#2563EB" />
-        <Text className="text-blue-600 font-poppins-bold text-[11px] ml-1">
-          Sign
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity className="flex-row items-center border border-red-500 px-2 py-0.5 rounded-full">
-        <Icon name="alert-circle" size={12} color="#DC2626" />
-        <Text className="text-red-600 font-poppins-bold text-[11px] ml-1">
-          Report
-        </Text>
-      </TouchableOpacity>
-    </View>
+                <View className="flex-row justify-end mt-2 space-x-2">
+                  <TouchableOpacity
+                    className="flex-row items-center border border-blue-500 px-2 py-0.5 rounded-full"
+                    onPress={() => router.push("/signature")}
+                  >
+                    <Icon name="draw-pen" size={12} color="#2563EB" />
+                    <Text className="text-blue-600 font-poppins-bold text-[11px] ml-1">
+                      Sign
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity className="flex-row items-center border border-red-500 px-2 py-0.5 rounded-full">
+                    <Icon name="alert-circle" size={12} color="#DC2626" />
+                    <Text className="text-red-600 font-poppins-bold text-[11px] ml-1">
+                      Report
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
 
               {/* Map */}
@@ -275,17 +356,19 @@ const router = useRouter();
           ) : (
             <View className="flex-1 justify-center items-center">
               <Image
-                source={require('../assets/image/trackorder.png')}
-                className="w-64 h-64 mb-6"
-                resizeMode="contain"
-              />
+  source={imageSource}
+  className="w-64 h-64 mb-6"
+  resizeMode="contain"
+/>
               <Text className="text-gray-600 font-poppins text-center">
-                Search for your HWB or Booking number to locate pickup/drop-off points
+                {searchAttempted && !loading 
+                  ? 'No booking found. Please check your booking number and try again.'
+                  : 'Search for your HWB or Booking number to locate pickup/drop-off points'
+                }
               </Text>
             </View>
           )}
         </View>
-
         <NavigationBar activeTab="track" />
       </View>
     </SafeAreaView>
