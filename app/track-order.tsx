@@ -28,7 +28,8 @@ interface BookingData {
   delivery_city: string | null;
   delivery_barangay: string | null;
   delivery_street: string | null;
-  created_at: string;
+  booking_date: string;
+    created_at: string;
 }
 
 const statusMap = {
@@ -282,11 +283,11 @@ const imageSource = searchAttempted && !loading
                 <Text className="font-poppins text-[11px] text-gray-500">
                   HWB: {currentBooking.hwb_number}
                 </Text>
-                {currentBooking.created_at && (
-                  <Text className="font-poppins text-[11px] text-gray-500 mb-2">
-                    Booked On: {new Date(currentBooking.created_at).toLocaleDateString()}
-                  </Text>
-                )}
+{currentBooking.booking_date && (
+    <Text className="font-poppins text-[11px] text-gray-500 mb-2">
+        Booked On: {new Date(currentBooking.booking_date).toLocaleDateString()}
+    </Text>
+)}
 
                 {/* Current Destination Only */}
                 <View className="mb-2">
