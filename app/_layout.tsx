@@ -47,7 +47,21 @@ export default function RootLayout() {
       headerBackTitle: 'Back',
     }}
   />
-  <Stack.Screen name="report-incident" options={{ headerShown: false }} />
+<Stack.Screen
+  name="report-incident"
+  options={{
+    headerShown: true,
+    headerTitle: 'Report Incident',
+    headerTitleAlign: 'center',
+    headerTitleStyle: {
+      fontFamily: 'Poppins-Bold',
+      color: '#DC2626',
+      fontSize: 18,
+    },
+    headerBackTitle: 'Back',
+  }}
+/>
+
   <Stack.Screen
     name="track-order"
     options={{

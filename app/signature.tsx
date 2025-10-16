@@ -13,25 +13,25 @@ export default function SignatureScreen() {
   const router = useRouter();
   const { currentBooking, updateBookingStatus, loading } = useBookingStore();
   const [signature, setSignature] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const sigRef = useRef<any>(null);
 
   const handleOK = (sig: string) => {
-    setSignature(sig); // base64 signature string
+    setSignature(sig); // Save base64 signature
   };
 
   const handleSaveSignature = async () => {
     if (!currentBooking) {
-      Alert.alert("Error", "No booking loaded.");
+      Alert.alert('Error', 'No booking loaded.');
       return;
     }
-
-    // Ask signature pad to output base64 → triggers onOK
-    sigRef.current?.readSignature();
 
     if (!signature) {
-      Alert.alert("Error", "Please draw your signature first.");
+      Alert.alert('Error', 'Please draw your signature first.');
       return;
     }
+
+    setSubmitting(true);
 
     let nextStatus: string | null = null;
     switch (currentBooking.status) {
@@ -52,15 +52,27 @@ export default function SignatureScreen() {
     }
 
     if (!nextStatus) {
-      Alert.alert("Info", "No further action required for this booking.");
+      setSubmitting(false);
+      Alert.alert('Info', 'No further action required for this booking.');
       return;
     }
 
-    const success = await updateBookingStatus(currentBooking.id, nextStatus);
-    if (success) {
-      Alert.alert("Signature Captured", `Status updated to ${nextStatus.replace(/_/g, " ")}`, [
-        { text: "OK", onPress: () => router.back() }
-      ]);
+    try {
+      const success = await updateBookingStatus(currentBooking.id, nextStatus);
+      if (success) {
+        Alert.alert(
+          'Signature Captured',
+          `Status updated to ${nextStatus.replace(/_/g, ' ')}`,
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to update booking status.');
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'Something went wrong while saving.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -80,7 +92,7 @@ export default function SignatureScreen() {
 
         {/* Signature Box */}
         <View className="flex-1 bg-gray-50 border border-gray-300 rounded-xl mb-6 overflow-hidden relative shadow-sm">
-          {/* Retry button top-right */}
+          {/* Retry button */}
           <TouchableOpacity
             onPress={handleRetry}
             className="absolute top-2 right-2 z-10 bg-white px-2 py-1 rounded-md shadow"
@@ -91,6 +103,7 @@ export default function SignatureScreen() {
           <SignatureCanvas
             ref={sigRef}
             onOK={handleOK}
+            onEnd={() => sigRef.current?.readSignature()} // Ensures state updates instantly after drawing
             descriptionText=""
             clearText="Clear"
             confirmText="Save"
@@ -101,7 +114,7 @@ export default function SignatureScreen() {
             `}
           />
 
-          {/* Label bottom */}
+          {/* Label */}
           <View className="absolute bottom-0 left-0 right-0 bg-gray-100 py-1 border-t border-gray-200">
             <Text className="text-center text-gray-600 font-poppins text-xs">
               Signature Area
@@ -109,7 +122,7 @@ export default function SignatureScreen() {
           </View>
         </View>
 
-        {/* Action Buttons */}
+        {/* Buttons */}
         <View className="flex-row justify-center space-x-4 mb-6">
           <TouchableOpacity
             className="bg-gray-500 py-3 px-6 rounded-lg flex-1 items-center"
@@ -119,11 +132,13 @@ export default function SignatureScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            className="bg-blue-500 py-3 px-6 rounded-lg flex-1 items-center"
+            className={`py-3 px-6 rounded-lg flex-1 items-center ${
+              submitting ? 'bg-gray-400' : 'bg-blue-500'
+            }`}
             onPress={handleSaveSignature}
-            disabled={loading}
+            disabled={submitting || loading}
           >
-            {loading ? (
+            {submitting || loading ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
               <Text className="text-white font-poppins-bold">Save</Text>

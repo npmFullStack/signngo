@@ -340,12 +340,15 @@ const imageSource = searchAttempted && !loading
                     </Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity className="flex-row items-center border border-red-500 px-2 py-0.5 rounded-full">
-                    <Icon name="alert-circle" size={12} color="#DC2626" />
-                    <Text className="text-red-600 font-poppins-bold text-[11px] ml-1">
-                      Report
-                    </Text>
-                  </TouchableOpacity>
+<TouchableOpacity 
+  className="flex-row items-center border border-red-500 px-2 py-0.5 rounded-full"
+  onPress={() => router.push("/report-incident")}
+>
+  <Icon name="alert-circle" size={12} color="#DC2626" />
+  <Text className="text-red-600 font-poppins-bold text-[11px] ml-1">
+    Report
+  </Text>
+</TouchableOpacity>
                 </View>
               </View>
 
